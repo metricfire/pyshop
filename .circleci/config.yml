@@ -1,0 +1,31 @@
+version: 2
+jobs:
+  build:
+    docker:
+      - image: hostedgraphite/pythonbuild:2venv
+
+    environment:
+      CIRCLE_ARTIFACTS: /tmp/artifacts
+    steps:
+      - checkout
+      - run: configure_pypi
+      - run: mkdir -p $CIRCLE_ARTIFACTS
+      - run: make install
+      - run: make lint
+      - run: make test
+      - run: make release
+      - run: cp -r cover $CIRCLE_ARTIFACTS
+      - run: cp deb_dist/*.deb $CIRCLE_ARTIFACTS
+      - store_artifacts:
+          path: /tmp/artifacts
+      - deploy:
+          name: Try deploying to S3 if tests pass and on master
+          command: |
+            if [ "${CIRCLE_BRANCH}" == "master" ]; then
+              git tag `python setup.py --version` || true
+              git push origin --tags
+              aws s3 sync $CIRCLE_ARTIFACTS s3://apt-prod-queue/ --exclude "*" --include "*.deb"
+              make upload
+            else
+              echo "Not on master. Not deploying"
+            fi
