@@ -9,6 +9,7 @@ import re
 import logging
 import os.path
 import unicodedata
+import heapq
 from datetime import datetime, timedelta
 
 from sqlalchemy.sql.expression import func
@@ -370,6 +371,11 @@ class Show(View):
                 log.info('No new version to mirror')
                 log.debug('pypi versions: %s', pypi_versions)
                 log.debug('mirrored versions: %s', pkg.versions)
+
+            last_n_versions = int(settings.get('pyshop.mirror.last_n_versions', 0))
+            if last_n_versions > 0:
+                pkg_versions = heapq.nlargest(last_n_versions, pkg_versions)
+
             for version in pkg_versions:
                 log.info('Mirroring version %s', version)
                 release_data = api.release_data(package_name, version)
