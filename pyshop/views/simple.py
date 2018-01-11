@@ -9,7 +9,7 @@ import re
 import logging
 import os.path
 import unicodedata
-import heapq
+from distutils.version import LooseVersion
 from datetime import datetime, timedelta
 
 from sqlalchemy.sql.expression import func
@@ -374,7 +374,9 @@ class Show(View):
 
             last_n_versions = int(settings.get('pyshop.mirror.last_n_versions', 0))
             if last_n_versions > 0:
-                pkg_versions = heapq.nlargest(last_n_versions, pkg_versions)
+                pkg_versions = list(pkg_versions)
+                pkg_versions.sort(key=LooseVersion)
+                pkg_versions = set(pkg_versions[-(last_n_versions):])
 
             for version in pkg_versions:
                 log.info('Mirroring version %s', version)
